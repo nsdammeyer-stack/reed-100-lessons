@@ -242,22 +242,24 @@
     }
 
     function playSound(text, phonetic) {
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-        let utterText = phonetic || text;
-        if(text === 's') utterText = "sssssssssssss";
-        if(text === 'm') utterText = "mmmmmmmmmmmmm";
-        if(text === 'a') utterText = "aaaaaaaaaaaaa";
-        if(text === 't') utterText = "tuh tuh tuh";
-        if(text === 'i') utterText = "iiiiiiiiiiiii";
-        if(text === 'e') utterText = "eeeeeeeeeeeee";
-        
-        const utter = new SpeechSynthesisUtterance(utterText);
-        utter.rate = 0.45; 
-        utter.pitch = 1.1;
-        window.speechSynthesis.speak(utter);
-      }
-    }
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.cancel();
+    
+    // Force extended continuous phoneme sounds
+    let utterText = phonetic || text;
+    if(text === 's') utterText = "sssssssssssss";
+    if(text === 'm') utterText = "mmmmmmmmmmmmm";
+    if(text === 'a') utterText = "aaaaaaaaaaaaa";
+    if(text === 't') utterText = "tuh tuh tuh";
+    if(text === 'i') utterText = "iiiiiiiiiiiii";
+    if(text === 'e') utterText = "eeeeeeeeeeeee";
+    
+    const utter = new SpeechSynthesisUtterance(utterText);
+    utter.rate = 0.4; // Extra slow for continuous stretching
+    utter.pitch = 1.2;
+    window.speechSynthesis.speak(utter);
+  }
+}
 
     function completeLesson() {
       const lesson = lessonsData[state.currentLessonIndex];
