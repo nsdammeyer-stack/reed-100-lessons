@@ -92,7 +92,7 @@
       </div>
 
       <div class="lessons-grid" id="lessons-grid">
-        <!-- Loaded dynamically from Google Sheet or Fallback -->
+        <!-- Loaded dynamically -->
       </div>
       <button class="btn btn-secondary" onclick="syncWithGoogleSheet()" id="sync-btn" style="font-size: 0.9rem; padding: 10px 20px;">🔄 Refresh from Google Sheet</button>
     </div>
@@ -161,17 +161,18 @@
       currentLessonIndex: 0
     };
 
+    // Robust offline fallback with exact property naming matching CSV headers
     let lessonsData = [
-      { lesson_id: 1, letter_word: "s", phonetic_sound: "sssssss", audio_source: "synth-s", instruction: "Tap the snake and hold your finger down to make the long sssss sound!", story: "The snake says sssss!" },
-      { lesson_id: 2, letter_word: "m", phonetic_sound: "mmmmmmm", audio_source: "synth-m", instruction: "Rub your tummy and say mmmmm like you taste something yummy!", story: "The happy cow says mmmmm!" },
-      { lesson_id: 3, letter_word: "a", phonetic_sound: "aaaaaaa", audio_source: "synth-a", instruction: "Open wide like the alligator and say aaaaaa!", story: "Open wide for the alligator!" },
-      { lesson_id: 4, letter_word: "sa", phonetic_sound: "s-a-sa", audio_source: "synth-sa", instruction: "Slide your finger along the arrow without stopping: sssss-aaaaaa -> sa!", story: "Sa sounds continuous!" },
-      { lesson_id: 5, letter_word: "t", phonetic_sound: "ttttttt", audio_source: "synth-t", instruction: "Tap your tongue on the roof of your mouth like a ticking clock: t-t-t!", story: "The clock goes t-t-t!" },
-      { lesson_id: 6, letter_word: "sat", phonetic_sound: "s-a-t", audio_source: "synth-sat", instruction: "Follow the ball under the letters and blend them together!", story: "Sam sat on a mat!" },
-      { lesson_id: 7, letter_word: "i", phonetic_sound: "iiiiiii", audio_source: "synth-i", instruction: "Smile big and make the short i sound like igloo!", story: "Inky the little insect says i-i-i!" },
-      { lesson_id: 8, letter_word: "sit", phonetic_sound: "s-i-t", audio_source: "synth-sit", instruction: "Blend s-i-t into sit!", story: "Sit down and read!" },
-      { lesson_id: 9, letter_word: "e", phonetic_sound: "eeeeeee", audio_source: "synth-e", instruction: "Pull back the corners of your mouth and say eeeee!", story: "Eddie Elephant loves eeeee!" },
-      { lesson_id: 10, letter_word: "Sam Sat", phonetic_sound: "Sam-Sat", audio_source: "synth-story", instruction: "Tap each word to read Sam's little story!", story: "Sam sat on a mat!" }
+      { lesson_id: 1, letter_word: "s", phonetic_sound: "sssssss", instruction: "Tap the snake and hold your finger down to make the long sssss sound!", story: "The snake says sssss!" },
+      { lesson_id: 2, letter_word: "m", phonetic_sound: "mmmmmmm", instruction: "Rub your tummy and say mmmmm like you taste something yummy!", story: "The happy cow says mmmmm!" },
+      { lesson_id: 3, letter_word: "a", phonetic_sound: "aaaaaaa", instruction: "Open wide like the alligator and say aaaaaa!", story: "Open wide for the alligator!" },
+      { lesson_id: 4, letter_word: "sa", phonetic_sound: "sssssss aaaaaaa", instruction: "Slide your finger along the arrow without stopping: sssss-aaaaaa -> sa!", story: "Sa sounds continuous!" },
+      { lesson_id: 5, letter_word: "t", phonetic_sound: "tuh tuh tuh", instruction: "Tap your tongue on the roof of your mouth like a ticking clock: t-t-t!", story: "The clock goes t-t-t!" },
+      { lesson_id: 6, letter_word: "sat", phonetic_sound: "sssssss aaaaaaa tuh", instruction: "Follow the ball under the letters and blend them together!", story: "Sam sat on a mat!" },
+      { lesson_id: 7, letter_word: "i", phonetic_sound: "iiiiiii", instruction: "Smile big and make the short i sound like igloo!", story: "Inky the little insect says i-i-i!" },
+      { lesson_id: 8, letter_word: "sit", phonetic_sound: "sssssss iiiiiii tuh", instruction: "Blend s-i-t into sit!", story: "Sit down and read!" },
+      { lesson_id: 9, letter_word: "e", phonetic_sound: "eeeeeee", instruction: "Pull back the corners of your mouth and say eeeee!", story: "Eddie Elephant loves eeeee!" },
+      { lesson_id: 10, letter_word: "Sam Sat", phonetic_sound: "Sam Sat", instruction: "Tap each word to read Sam's little story!", story: "Sam sat on a mat!" }
     ];
 
     function selectAvatar(emoji, el) {
@@ -201,13 +202,20 @@
         const response = await fetch(GOOGLE_SHEET_API);
         const data = await response.json();
         if(data && Array.isArray(data) && data.length > 0) {
-          lessonsData = data;
+          // Normalize sheet keys in case column names have spaces/caps
+          lessonsData = data.map(item => ({
+            lesson_id: item.lesson_id || item.lesson || 1,
+            letter_word: item.letter_word || item.letter_ / item.word || "s",
+            phonetic_sound: item.phonetic_sound || item.phonetic || "sssssss",
+            instruction: item.instruction || "Practice the sound!",
+            story: item.story || "Great reading!"
+          }));
           renderLessons();
           if(btn) btn.innerText = "✅ Synced with Google Sheet!";
           setTimeout(() => { if(btn) btn.innerText = "🔄 Refresh from Google Sheet"; }, 2500);
         }
       } catch(e) {
-        console.log("Using cached lessons due to CORS/Network error:", e);
+        console.log("Using robust offline lessons:", e);
         if(btn) btn.innerText = "⚠️ Using Offline Lessons";
       }
     }
@@ -242,24 +250,26 @@
     }
 
     function playSound(text, phonetic) {
-  if ('speechSynthesis' in window) {
-    window.speechSynthesis.cancel();
-    
-    // Force extended continuous phoneme sounds
-    let utterText = phonetic || text;
-    if(text === 's') utterText = "sssssssssssss";
-    if(text === 'm') utterText = "mmmmmmmmmmmmm";
-    if(text === 'a') utterText = "aaaaaaaaaaaaa";
-    if(text === 't') utterText = "tuh tuh tuh";
-    if(text === 'i') utterText = "iiiiiiiiiiiii";
-    if(text === 'e') utterText = "eeeeeeeeeeeee";
-    
-    const utter = new SpeechSynthesisUtterance(utterText);
-    utter.rate = 0.4; // Extra slow for continuous stretching
-    utter.pitch = 1.2;
-    window.speechSynthesis.speak(utter);
-  }
-}
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        
+        let utterText = phonetic || text;
+        
+        // Force pure continuous phoneme speech strings to stop spelling letter names
+        const cleanText = (text + "").toLowerCase().trim();
+        if(cleanText === 's') utterText = "sssssssssssss";
+        else if(cleanText === 'm') utterText = "mmmmmmmmmmmmm";
+        else if(cleanText === 'a') utterText = "aaaaaaaaaaaaa";
+        else if(cleanText === 't') utterText = "tuh tuh tuh";
+        else if(cleanText === 'i') utterText = "iiiiiiiiiiiii";
+        else if(cleanText === 'e') utterText = "eeeeeeeeeeeee";
+
+        const utter = new SpeechSynthesisUtterance(utterText);
+        utter.rate = 0.35; // Extra slow for smooth continuous sound stretching
+        utter.pitch = 1.1;
+        window.speechSynthesis.speak(utter);
+      }
+    }
 
     function completeLesson() {
       const lesson = lessonsData[state.currentLessonIndex];
