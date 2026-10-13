@@ -163,16 +163,16 @@
 
     // Robust offline fallback with exact property naming matching CSV headers
     let lessonsData = [
-      { lesson_id: 1, letter_word: "s", phonetic_sound: "sssssss", instruction: "Tap the snake and hold your finger down to make the long sssss sound!", story: "The snake says sssss!" },
-      { lesson_id: 2, letter_word: "m", phonetic_sound: "mmmmmmm", instruction: "Rub your tummy and say mmmmm like you taste something yummy!", story: "The happy cow says mmmmm!" },
-      { lesson_id: 3, letter_word: "a", phonetic_sound: "aaaaaaa", instruction: "Open wide like the alligator and say aaaaaa!", story: "Open wide for the alligator!" },
-      { lesson_id: 4, letter_word: "sa", phonetic_sound: "sssssss aaaaaaa", instruction: "Slide your finger along the arrow without stopping: sssss-aaaaaa -> sa!", story: "Sa sounds continuous!" },
-      { lesson_id: 5, letter_word: "t", phonetic_sound: "tuh tuh tuh", instruction: "Tap your tongue on the roof of your mouth like a ticking clock: t-t-t!", story: "The clock goes t-t-t!" },
-      { lesson_id: 6, letter_word: "sat", phonetic_sound: "sssssss aaaaaaa tuh", instruction: "Follow the ball under the letters and blend them together!", story: "Sam sat on a mat!" },
-      { lesson_id: 7, letter_word: "i", phonetic_sound: "iiiiiii", instruction: "Smile big and make the short i sound like igloo!", story: "Inky the little insect says i-i-i!" },
-      { lesson_id: 8, letter_word: "sit", phonetic_sound: "sssssss iiiiiii tuh", instruction: "Blend s-i-t into sit!", story: "Sit down and read!" },
-      { lesson_id: 9, letter_word: "e", phonetic_sound: "eeeeeee", instruction: "Pull back the corners of your mouth and say eeeee!", story: "Eddie Elephant loves eeeee!" },
-      { lesson_id: 10, letter_word: "Sam Sat", phonetic_sound: "Sam Sat", instruction: "Tap each word to read Sam's little story!", story: "Sam sat on a mat!" }
+      { lesson_id: 1, letter_word: "s", phonetic_sound: "sssssss", audio_source: "https://archive.org/download/TheLetterPeople/19%20Super%20Socks%20-%20Mr%20S.mp3", instruction: "Tap the snake and hold your finger down to make the long sssss sound!", story: "The snake says sssss!" },
+      { lesson_id: 2, letter_word: "m", phonetic_sound: "mmmmmmm", audio_source: "https://archive.org/download/TheLetterPeople/13%20Munching%20Mouth%20-%20Mr%20M.mp3", instruction: "Rub your tummy and say mmmmm like you taste something yummy!", story: "The happy cow says mmmmm!" },
+      { lesson_id: 3, letter_word: "a", phonetic_sound: "aaaaaaa", audio_source: "https://archive.org/download/TheLetterPeople/1%20A%27Choo%20-%20Ms%20A.mp3", instruction: "Open wide like the alligator and say aaaaaa!", story: "Open wide for the alligator!" },
+      { lesson_id: 4, letter_word: "sa", phonetic_sound: "sssssss aaaaaaa", audio_source: "", instruction: "Slide your finger along the arrow without stopping: sssss-aaaaaa -> sa!", story: "Sa sounds continuous!" },
+      { lesson_id: 5, letter_word: "t", phonetic_sound: "tuh tuh tuh", audio_source: "https://archive.org/download/TheLetterPeople/20%20Tall%20Teeth%20-%20Mr%20T.mp3", instruction: "Tap your tongue on the roof of your mouth like a ticking clock: t-t-t!", story: "The clock goes t-t-t!" },
+      { lesson_id: 6, letter_word: "sat", phonetic_sound: "sssssss aaaaaaa tuh", audio_source: "", instruction: "Follow the ball under the letters and blend them together!", story: "Sam sat on a mat!" },
+      { lesson_id: 7, letter_word: "i", phonetic_sound: "iiiiiii", audio_source: "https://archive.org/download/TheLetterPeople/9%20Itchy%20Itch%20-%20Ms%20I.mp3", instruction: "Smile big and make the short i sound like igloo!", story: "Inky the little insect says i-i-i!" },
+      { lesson_id: 8, letter_word: "sit", phonetic_sound: "sssssss iiiiiii tuh", audio_source: "", instruction: "Blend s-i-t into sit!", story: "Sit down and read!" },
+      { lesson_id: 9, letter_word: "e", phonetic_sound: "eeeeeee", audio_source: "", instruction: "Pull back the corners of your mouth and say eeeee!", story: "Eddie Elephant loves eeeee!" },
+      { lesson_id: 10, letter_word: "Sam Sat", phonetic_sound: "Sam Sat", audio_source: "", instruction: "Tap each word to read Sam's little story!", story: "Sam sat on a mat!" }
     ];
 
     function selectAvatar(emoji, el) {
@@ -202,13 +202,14 @@
         const response = await fetch(GOOGLE_SHEET_API);
         const data = await response.json();
         if(data && Array.isArray(data) && data.length > 0) {
-          // Normalize sheet keys in case column names have spaces/caps
-          lessonsData = data.map(item => ({
-            lesson_id: item.lesson_id || item.lesson || 1,
-            letter_word: item.letter_word || item.letter_ / item.word || "s",
-            phonetic_sound: item.phonetic_sound || item.phonetic || "sssssss",
-            instruction: item.instruction || "Practice the sound!",
-            story: item.story || "Great reading!"
+          // Robust mapping matching exact lowercase property keys generated by Apps Script
+          lessonsData = data.map((item, idx) => ({
+            lesson_id: Number(item.lesson_id) || (idx + 1),
+            letter_word: item.letter___word || item.letter_word || item.letter || lessonsData[idx]?.letter_word || "s",
+            phonetic_sound: item.phonetic_sound || lessonsData[idx]?.phonetic_sound || "sssssss",
+            audio_source: item.audio_source || lessonsData[idx]?.audio_source || "",
+            instruction: item.instruction || lessonsData[idx]?.instruction || "Practice the sound!",
+            story: item.story || lessonsData[idx]?.story || "Great reading!"
           }));
           renderLessons();
           if(btn) btn.innerText = "✅ Synced with Google Sheet!";
@@ -243,19 +244,44 @@
       const container = document.getElementById('lesson-container');
       container.innerHTML = `
         <div class="instruction-text">${lesson.instruction}</div>
-        <div class="giant-letter" onclick="playSound('${lesson.letter_word}', '${lesson.phonetic_sound}')">${lesson.letter_word}</div>
+        <div class="giant-letter" onclick="playSound('${lesson.letter_word}', '${lesson.phonetic_sound}', '${lesson.audio_source}')">${lesson.letter_word}</div>
         <div class="story-bubble">💬 ${lesson.story}</div>
       `;
-      playSound(lesson.letter_word, lesson.phonetic_sound);
+      playSound(lesson.letter_word, lesson.phonetic_sound, lesson.audio_source);
     }
 
-   function playSound(text, phonetic, audioUrl) {
-  if (audioUrl && audioUrl.startsWith('http')) {
-    new Audio(audioUrl).play().catch(e => console.log(e));
-    return;
-  }
-  // fallback speech synthesis
-}
+    function playSound(text, phonetic, audioUrl) {
+      // If a valid audio URL is provided from public domain archive or user recording, play it
+      if (audioUrl && audioUrl.startsWith('http')) {
+        const soundClip = new Audio(audioUrl);
+        soundClip.play().catch(err => {
+          console.log("Audio play blocked, falling back to speech synthesis:", err);
+          fallbackSpeech(text, phonetic);
+        });
+        return;
+      }
+      fallbackSpeech(text, phonetic);
+    }
+
+    function fallbackSpeech(text, phonetic) {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        let utterText = phonetic || text;
+        const cleanText = (text + "").toLowerCase().trim();
+        if(cleanText === 's') utterText = "sssssssssssss";
+        else if(cleanText === 'm') utterText = "mmmmmmmmmmmmm";
+        else if(cleanText === 'a') utterText = "aaaaaaaaaaaaa";
+        else if(cleanText === 't') utterText = "tuh tuh tuh";
+        else if(cleanText === 'i') utterText = "iiiiiiiiiiiii";
+        else if(cleanText === 'e') utterText = "eeeeeeeeeeeee";
+
+        const utter = new SpeechSynthesisUtterance(utterText);
+        utter.rate = 0.35;
+        utter.pitch = 1.1;
+        window.speechSynthesis.speak(utter);
+      }
+    }
+
     function completeLesson() {
       const lesson = lessonsData[state.currentLessonIndex];
       if(!state.completedLessons.includes(lesson.lesson_id)) {
