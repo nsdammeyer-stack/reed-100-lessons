@@ -249,28 +249,13 @@
       playSound(lesson.letter_word, lesson.phonetic_sound);
     }
 
-    function playSound(text, phonetic) {
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-        
-        let utterText = phonetic || text;
-        
-        // Force pure continuous phoneme speech strings to stop spelling letter names
-        const cleanText = (text + "").toLowerCase().trim();
-        if(cleanText === 's') utterText = "sssssssssssss";
-        else if(cleanText === 'm') utterText = "mmmmmmmmmmmmm";
-        else if(cleanText === 'a') utterText = "aaaaaaaaaaaaa";
-        else if(cleanText === 't') utterText = "tuh tuh tuh";
-        else if(cleanText === 'i') utterText = "iiiiiiiiiiiii";
-        else if(cleanText === 'e') utterText = "eeeeeeeeeeeee";
-
-        const utter = new SpeechSynthesisUtterance(utterText);
-        utter.rate = 0.35; // Extra slow for smooth continuous sound stretching
-        utter.pitch = 1.1;
-        window.speechSynthesis.speak(utter);
-      }
-    }
-
+   function playSound(text, phonetic, audioUrl) {
+  if (audioUrl && audioUrl.startsWith('http')) {
+    new Audio(audioUrl).play().catch(e => console.log(e));
+    return;
+  }
+  // fallback speech synthesis
+}
     function completeLesson() {
       const lesson = lessonsData[state.currentLessonIndex];
       if(!state.completedLessons.includes(lesson.lesson_id)) {
